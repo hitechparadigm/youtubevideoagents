@@ -11,25 +11,50 @@ env:
 jobs:
   build_and_push:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       id-token: write
       contents: read
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Configure AWS creds (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::786673323159:role/GithubCdkDeployRole
           aws-region: ${{ env.AWS_REGION }}
+
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
-      - name: Discover ECR repo URI
+
+      - name: Discover ECR repo URI (from CloudFormation output)
         id: repo
+        shell: bash
         run: |
-          URI=$(aws ecr describe-repositories --query "repositories[?contains(repositoryName,'RendererRepo')].repositoryUri | [0]" --output text)
-          echo "uri=$URI" >> $GITHUB_OUTPUT
-      - name: Build & Push
+          set -euo pipefail
+          URI=$(aws cloudformation describe-stacks --stack-name VideoCompute \
+            --query "Stacks[0].Outputs[?OutputKey=='RendererRepoUri'].OutputValue" --output text)
+          if [ -z "$URI" ] || [ "$URI" = "None" ]; then
+            echo "ECR repo URI not found. Did VideoCompute deploy succeed?" >&2
+            exit 1
+          fi
+          echo "uri=$URI" >> "$GITHUB_OUTPUT"
+          echo "Using ECR: $URI"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push (with cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./renderer
+          push: true
+          tags: ${{ steps.repo.outputs.uri }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify image exists
         run: |
-          docker build -t renderer:latest ./renderer
-          docker tag renderer:latest ${{ steps.repo.outputs.uri }}:latest
-          docker push ${{ steps.repo.outputs.uri }}:latest
+          REPO_NAME=$(echo "${{ steps.repo.outputs.uri }}" | awk -F/ '{print $2}')
+          aws ecr list-images --repository-name "$REPO_NAME" --query 'imageIds[*].imageTag' --output text
