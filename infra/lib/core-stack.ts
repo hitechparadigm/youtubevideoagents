@@ -1,14 +1,19 @@
-import { Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib';
+import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secrets from 'aws-cdk-lib/aws-secretsmanager';
+import * as kms from 'aws-cdk-lib/aws-kms';
 
 export class CoreStack extends Stack {
   readonly mediaBucket: s3.Bucket;
   readonly jobsTable: dynamodb.Table;
+
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
+
+    // Use the AWS-managed KMS key for Secrets Manager
+    const smManagedKey = kms.Alias.fromAliasName(this, 'SmManaged', 'alias/aws/secretsmanager');
 
     this.mediaBucket = new s3.Bucket(this, 'MediaBucket', {
       versioned: true,
@@ -23,9 +28,18 @@ export class CoreStack extends Stack {
       timeToLiveAttribute: 'ttl'
     });
 
-    // Secret placeholders (you'll set values later)
-    new secrets.Secret(this, 'YouTubeOAuth', { secretName: 'youtube/oauth' });
-    new secrets.Secret(this, 'PexelsKey', { secretName: 'pexels/apiKey' });
-    new secrets.Secret(this, 'ElevenLabsKey', { secretName: 'elevenlabs/apiKey' });
+    // Secrets (now explicitly encrypted with the AWS-managed key)
+    new secrets.Secret(this, 'YouTubeOAuth', {
+      secretName: 'youtube/oauth',
+      encryptionKey: smManagedKey
+    });
+    new secrets.Secret(this, 'PexelsKey', {
+      secretName: 'pexels/apiKey',
+      encryptionKey: smManagedKey
+    });
+    new secrets.Secret(this, 'ElevenLabsKey', {
+      secretName: 'elevenlabs/apiKey',
+      encryptionKey: smManagedKey
+    });
   }
 }

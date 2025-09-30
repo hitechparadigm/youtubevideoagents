@@ -100,6 +100,26 @@
    "Type": "AWS::SecretsManager::Secret",
    "Properties": {
     "GenerateSecretString": {},
+    "KmsKeyId": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":kms:",
+       {
+        "Ref": "AWS::Region"
+       },
+       ":",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":alias/aws/secretsmanager"
+      ]
+     ]
+    },
     "Name": "youtube/oauth"
    },
    "UpdateReplacePolicy": "Delete",
@@ -112,6 +132,26 @@
    "Type": "AWS::SecretsManager::Secret",
    "Properties": {
     "GenerateSecretString": {},
+    "KmsKeyId": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":kms:",
+       {
+        "Ref": "AWS::Region"
+       },
+       ":",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":alias/aws/secretsmanager"
+      ]
+     ]
+    },
     "Name": "pexels/apiKey"
    },
    "UpdateReplacePolicy": "Delete",
@@ -124,6 +164,26 @@
    "Type": "AWS::SecretsManager::Secret",
    "Properties": {
     "GenerateSecretString": {},
+    "KmsKeyId": {
+     "Fn::Join": [
+      "",
+      [
+       "arn:",
+       {
+        "Ref": "AWS::Partition"
+       },
+       ":kms:",
+       {
+        "Ref": "AWS::Region"
+       },
+       ":",
+       {
+        "Ref": "AWS::AccountId"
+       },
+       ":alias/aws/secretsmanager"
+      ]
+     ]
+    },
     "Name": "elevenlabs/apiKey"
    },
    "UpdateReplacePolicy": "Delete",
@@ -135,7 +195,7 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/0WKyw7CIBBFv6V7OlbcuNYfMG33ZgqjoQ9IGLBpCP9uWkxcnXNurgR5vkJT4cq10lM9mwFSF1BNAld+Jr5AukU1URD3l/1ZwcPNRm3/uXQWerO4OD1A6nGYaT8ckgWT8hR4QYtv8pC6o/dDsZxFS+yiV5SFdZpg5NNHSpANNNXIxtQ+2mAWgrbwC/7IcI+/AAAA"
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/0WKyw7CIBBFv6V7OlbcuNYfMG33ZgqjoQ9IGLBpCP9uWkxcnXNurgR5vkJT4cq10lM9mwFSF1BNoiV20SsSuPIz8QXSLaqJgri/7M8KHm42avvPpbPQm8XF6QFSj8NM++GQLJiUp8ALWnyTh9QdvR+K5ZyFdZpg5NNHSpANNNXIxtQ+2mAWgrbwC63PrKm/AAAA"
    },
    "Metadata": {
     "aws:cdk:path": "VideoCore/CDKMetadata/Default"

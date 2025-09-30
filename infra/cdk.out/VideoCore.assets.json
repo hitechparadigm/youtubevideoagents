@@ -1,16 +1,16 @@
 {
   "version": "48.0.0",
   "files": {
-    "ccadad59cabbff5c6e8eebe9ea0370b47b24b373fa25344dc5b56bc5c44a2c48": {
+    "fd0763e9b62951892b9d32a8e47d89dcc7b813a83c55be4d46c2bdd495522b65": {
       "displayName": "VideoCore Template",
       "source": {
         "path": "VideoCore.template.json",
         "packaging": "file"
       },
       "destinations": {
-        "current_account-current_region-7a12a7ac": {
+        "current_account-current_region-5398ea00": {
           "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
-          "objectKey": "ccadad59cabbff5c6e8eebe9ea0370b47b24b373fa25344dc5b56bc5c44a2c48.json",
+          "objectKey": "fd0763e9b62951892b9d32a8e47d89dcc7b813a83c55be4d46c2bdd495522b65.json",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
         }
       }
