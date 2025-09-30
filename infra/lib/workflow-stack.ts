@@ -32,8 +32,8 @@ export class WorkflowStack extends Stack {
     };
 
     const scriptFn = new lambda.Function(this, 'ScriptFn', { ...common, functionName: 'scriptFn' });
-    const ttsFn = new lambda.Function(this, 'TtsFn', { ...common, functionName: 'ttsFn' });
-    const brollFn = new lambda.Function(this, 'BrollFn', { ...common, functionName: 'brollFn' });
+    const ttsFn    = new lambda.Function(this, 'TtsFn',    { ...common, functionName: 'ttsFn' });
+    const brollFn  = new lambda.Function(this, 'BrollFn',  { ...common, functionName: 'brollFn' });
     const uploadFn = new lambda.Function(this, 'UploadFn', { ...common, functionName: 'uploadFn', timeout: Duration.seconds(120) });
 
     props.mediaBucket.grantReadWrite(scriptFn);
@@ -56,15 +56,21 @@ export class WorkflowStack extends Stack {
       resultPath: '$.render'
     });
 
-    const chain = new sfn.Chain()
-      .next(new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' }))
-      .next(new tasks.LambdaInvoke(this, 'TTS', { lambdaFunction: ttsFn, resultPath: '$.tts' }))
-      .next(new tasks.LambdaInvoke(this, 'Broll', { lambdaFunction: brollFn, resultPath: '$.broll' }))
+    // --- use Chain.start(...) instead of new Chain() ---
+    const scriptStep = new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' });
+    const ttsStep    = new tasks.LambdaInvoke(this, 'TTS',    { lambdaFunction: ttsFn,    resultPath: '$.tts'    });
+    const brollStep  = new tasks.LambdaInvoke(this, 'Broll',  { lambdaFunction: brollFn,  resultPath: '$.broll'  });
+    const uploadStep = new tasks.LambdaInvoke(this, 'Upload', { lambdaFunction: uploadFn, resultPath: '$.upload' });
+
+    const definition = sfn.Chain
+      .start(scriptStep)
+      .next(ttsStep)
+      .next(brollStep)
       .next(renderTask)
-      .next(new tasks.LambdaInvoke(this, 'Upload', { lambdaFunction: uploadFn, resultPath: '$.upload' }));
+      .next(uploadStep);
 
     new sfn.StateMachine(this, 'Pipeline', {
-      definitionBody: sfn.DefinitionBody.fromChainable(chain),
+      definitionBody: sfn.DefinitionBody.fromChainable(definition),
       timeout: Duration.minutes(20)
     });
   }

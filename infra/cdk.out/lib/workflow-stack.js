@@ -1,0 +1,57 @@
+import { Stack, Duration } from 'aws-cdk-lib';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+export class WorkflowStack extends Stack {
+    constructor(scope, id, props) {
+        super(scope, id, props);
+        const common = {
+            runtime: lambda.Runtime.PYTHON_3_12,
+            timeout: Duration.seconds(60),
+            memorySize: 512,
+            handler: 'app.handler',
+            environment: {
+                MEDIA_BUCKET: props.mediaBucket.bucketName,
+                JOBS_TABLE: props.jobsTable.tableName
+            },
+            code: lambda.Code.fromAsset('../services')
+        };
+        const scriptFn = new lambda.Function(this, 'ScriptFn', { ...common, functionName: 'scriptFn' });
+        const ttsFn = new lambda.Function(this, 'TtsFn', { ...common, functionName: 'ttsFn' });
+        const brollFn = new lambda.Function(this, 'BrollFn', { ...common, functionName: 'brollFn' });
+        const uploadFn = new lambda.Function(this, 'UploadFn', { ...common, functionName: 'uploadFn', timeout: Duration.seconds(120) });
+        props.mediaBucket.grantReadWrite(scriptFn);
+        props.mediaBucket.grantReadWrite(ttsFn);
+        props.mediaBucket.grantReadWrite(brollFn);
+        props.mediaBucket.grantReadWrite(uploadFn);
+        props.jobsTable.grantReadWriteData(scriptFn);
+        props.jobsTable.grantReadWriteData(uploadFn);
+        const renderTask = new tasks.EcsRunTask(this, 'RenderECS', {
+            integrationPattern: sfn.IntegrationPattern.RUN_JOB,
+            cluster: props.cluster,
+            taskDefinition: props.rendererTask,
+            assignPublicIp: true,
+            launchTarget: new tasks.EcsFargateLaunchTarget(),
+            containerOverrides: [{
+                    containerDefinition: props.rendererTask.defaultContainer,
+                    environment: [{ name: 'JOB_ID', value: sfn.JsonPath.stringAt('$.jobId') }]
+                }],
+            resultPath: '$.render'
+        });
+        // --- use Chain.start(...) instead of new Chain() ---
+        const scriptStep = new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' });
+        const ttsStep = new tasks.LambdaInvoke(this, 'TTS', { lambdaFunction: ttsFn, resultPath: '$.tts' });
+        const brollStep = new tasks.LambdaInvoke(this, 'Broll', { lambdaFunction: brollFn, resultPath: '$.broll' });
+        const uploadStep = new tasks.LambdaInvoke(this, 'Upload', { lambdaFunction: uploadFn, resultPath: '$.upload' });
+        const definition = sfn.Chain
+            .start(scriptStep)
+            .next(ttsStep)
+            .next(brollStep)
+            .next(renderTask)
+            .next(uploadStep);
+        new sfn.StateMachine(this, 'Pipeline', {
+            definitionBody: sfn.DefinitionBody.fromChainable(definition),
+            timeout: Duration.minutes(20)
+        });
+    }
+}
