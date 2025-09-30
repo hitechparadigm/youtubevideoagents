@@ -1,0 +1,35 @@
+name: deploy-cdk
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  CDK_PARAMS: "--all --require-approval never"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '18' }
+      - name: Install CDK + deps
+        run: |
+          npm i -g aws-cdk
+          cd infra
+          npm ci || npm install
+          npm run build || npx tsc -p tsconfig.json
+      - name: Configure AWS creds (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::786673323159:role/GithubCdkDeployRole
+          aws-region: ${{ env.AWS_REGION }}
+      - name: CDK synth
+        run: cd infra && cdk synth
+      - name: CDK deploy
+        run: cd infra && cdk deploy ${{ env.CDK_PARAMS }}

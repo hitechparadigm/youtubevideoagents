@@ -1,0 +1,71 @@
+import { Stack, StackProps, Duration } from 'aws-cdk-lib';
+import { Construct } from 'constructs';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as ecs from 'aws-cdk-lib/aws-ecs';
+
+export class WorkflowStack extends Stack {
+  constructor(
+    scope: Construct, id: string,
+    props: StackProps & {
+      mediaBucket: s3.Bucket,
+      jobsTable: dynamodb.Table,
+      rendererTask: ecs.FargateTaskDefinition,
+      cluster: ecs.Cluster
+    }
+  ) {
+    super(scope, id, props);
+
+    const common = {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      timeout: Duration.seconds(60),
+      memorySize: 512,
+      handler: 'app.handler',
+      environment: {
+        MEDIA_BUCKET: props.mediaBucket.bucketName,
+        JOBS_TABLE: props.jobsTable.tableName
+      },
+      code: lambda.Code.fromAsset('../services')
+    };
+
+    const scriptFn = new lambda.Function(this, 'ScriptFn', { ...common, functionName: 'scriptFn' });
+    const ttsFn = new lambda.Function(this, 'TtsFn', { ...common, functionName: 'ttsFn' });
+    const brollFn = new lambda.Function(this, 'BrollFn', { ...common, functionName: 'brollFn' });
+    const uploadFn = new lambda.Function(this, 'UploadFn', { ...common, functionName: 'uploadFn', timeout: Duration.seconds(120) });
+
+    props.mediaBucket.grantReadWrite(scriptFn);
+    props.mediaBucket.grantReadWrite(ttsFn);
+    props.mediaBucket.grantReadWrite(brollFn);
+    props.mediaBucket.grantReadWrite(uploadFn);
+    props.jobsTable.grantReadWriteData(scriptFn);
+    props.jobsTable.grantReadWriteData(uploadFn);
+
+    const renderTask = new tasks.EcsRunTask(this, 'RenderECS', {
+      integrationPattern: sfn.IntegrationPattern.RUN_JOB,
+      cluster: props.cluster,
+      taskDefinition: props.rendererTask,
+      assignPublicIp: true,
+      launchTarget: new tasks.EcsFargateLaunchTarget(),
+      containerOverrides: [{
+        containerDefinition: props.rendererTask.defaultContainer!,
+        environment: [{ name: 'JOB_ID', value: sfn.JsonPath.stringAt('$.jobId') }]
+      }],
+      resultPath: '$.render'
+    });
+
+    const chain = new sfn.Chain()
+      .next(new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' }))
+      .next(new tasks.LambdaInvoke(this, 'TTS', { lambdaFunction: ttsFn, resultPath: '$.tts' }))
+      .next(new tasks.LambdaInvoke(this, 'Broll', { lambdaFunction: brollFn, resultPath: '$.broll' }))
+      .next(renderTask)
+      .next(new tasks.LambdaInvoke(this, 'Upload', { lambdaFunction: uploadFn, resultPath: '$.upload' }));
+
+    new sfn.StateMachine(this, 'Pipeline', {
+      definitionBody: sfn.DefinitionBody.fromChainable(chain),
+      timeout: Duration.minutes(20)
+    });
+  }
+}
