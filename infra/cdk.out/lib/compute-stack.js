@@ -1,9 +1,45 @@
-import { Stack, CfnOutput } from 'aws-cdk-lib';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
-import * as logs from 'aws-cdk-lib/aws-logs';
-export class ComputeStack extends Stack {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ComputeStack = void 0;
+const aws_cdk_lib_1 = require("aws-cdk-lib");
+const ecs = __importStar(require("aws-cdk-lib/aws-ecs"));
+const ec2 = __importStar(require("aws-cdk-lib/aws-ec2"));
+const ecr = __importStar(require("aws-cdk-lib/aws-ecr"));
+const logs = __importStar(require("aws-cdk-lib/aws-logs"));
+class ComputeStack extends aws_cdk_lib_1.Stack {
     cluster;
     rendererTask;
     constructor(scope, id, props) {
@@ -24,6 +60,7 @@ export class ComputeStack extends Stack {
         });
         container.addUlimits({ name: ecs.UlimitName.NOFILE, hardLimit: 1048576, softLimit: 1048576 });
         props.mediaBucket.grantReadWrite(this.rendererTask.taskRole);
-        new CfnOutput(this, 'RendererRepoUri', { value: repo.repositoryUri });
+        new aws_cdk_lib_1.CfnOutput(this, 'RendererRepoUri', { value: repo.repositoryUri });
     }
 }
+exports.ComputeStack = ComputeStack;

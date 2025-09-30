@@ -1,0 +1,34 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472": {
+      "displayName": "ScriptFn/Code",
+      "source": {
+        "path": "asset.a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "current_account-current_region-b0ab4557": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472.zip",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    },
+    "8366c8731b57e1b1256010b99f6d688a7ce127da04383c3686acdb6b716f42cb": {
+      "displayName": "VideoWorkflow Template",
+      "source": {
+        "path": "VideoWorkflow.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region-cc3cd53a": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "8366c8731b57e1b1256010b99f6d688a7ce127da04383c3686acdb6b716f42cb.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

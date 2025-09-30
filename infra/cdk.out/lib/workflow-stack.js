@@ -1,13 +1,49 @@
-import { Stack, Duration } from 'aws-cdk-lib';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-export class WorkflowStack extends Stack {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WorkflowStack = void 0;
+const aws_cdk_lib_1 = require("aws-cdk-lib");
+const sfn = __importStar(require("aws-cdk-lib/aws-stepfunctions"));
+const tasks = __importStar(require("aws-cdk-lib/aws-stepfunctions-tasks"));
+const lambda = __importStar(require("aws-cdk-lib/aws-lambda"));
+class WorkflowStack extends aws_cdk_lib_1.Stack {
     constructor(scope, id, props) {
         super(scope, id, props);
         const common = {
             runtime: lambda.Runtime.PYTHON_3_12,
-            timeout: Duration.seconds(60),
+            timeout: aws_cdk_lib_1.Duration.seconds(60),
             memorySize: 512,
             handler: 'app.handler',
             environment: {
@@ -19,7 +55,7 @@ export class WorkflowStack extends Stack {
         const scriptFn = new lambda.Function(this, 'ScriptFn', { ...common, functionName: 'scriptFn' });
         const ttsFn = new lambda.Function(this, 'TtsFn', { ...common, functionName: 'ttsFn' });
         const brollFn = new lambda.Function(this, 'BrollFn', { ...common, functionName: 'brollFn' });
-        const uploadFn = new lambda.Function(this, 'UploadFn', { ...common, functionName: 'uploadFn', timeout: Duration.seconds(120) });
+        const uploadFn = new lambda.Function(this, 'UploadFn', { ...common, functionName: 'uploadFn', timeout: aws_cdk_lib_1.Duration.seconds(120) });
         props.mediaBucket.grantReadWrite(scriptFn);
         props.mediaBucket.grantReadWrite(ttsFn);
         props.mediaBucket.grantReadWrite(brollFn);
@@ -51,7 +87,8 @@ export class WorkflowStack extends Stack {
             .next(uploadStep);
         new sfn.StateMachine(this, 'Pipeline', {
             definitionBody: sfn.DefinitionBody.fromChainable(definition),
-            timeout: Duration.minutes(20)
+            timeout: aws_cdk_lib_1.Duration.minutes(20)
         });
     }
 }
+exports.WorkflowStack = WorkflowStack;

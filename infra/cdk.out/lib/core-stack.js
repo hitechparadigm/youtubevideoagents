@@ -1,8 +1,44 @@
-import { Stack, RemovalPolicy } from 'aws-cdk-lib';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as secrets from 'aws-cdk-lib/aws-secretsmanager';
-export class CoreStack extends Stack {
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.CoreStack = void 0;
+const aws_cdk_lib_1 = require("aws-cdk-lib");
+const s3 = __importStar(require("aws-cdk-lib/aws-s3"));
+const dynamodb = __importStar(require("aws-cdk-lib/aws-dynamodb"));
+const secrets = __importStar(require("aws-cdk-lib/aws-secretsmanager"));
+class CoreStack extends aws_cdk_lib_1.Stack {
     mediaBucket;
     jobsTable;
     constructor(scope, id, props) {
@@ -11,7 +47,7 @@ export class CoreStack extends Stack {
             versioned: true,
             enforceSSL: true,
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-            removalPolicy: RemovalPolicy.RETAIN
+            removalPolicy: aws_cdk_lib_1.RemovalPolicy.RETAIN
         });
         this.jobsTable = new dynamodb.Table(this, 'Jobs', {
             partitionKey: { name: 'jobId', type: dynamodb.AttributeType.STRING },
@@ -24,3 +60,4 @@ export class CoreStack extends Stack {
         new secrets.Secret(this, 'ElevenLabsKey', { secretName: 'elevenlabs/apiKey' });
     }
 }
+exports.CoreStack = CoreStack;

@@ -1,0 +1,20 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "ccadad59cabbff5c6e8eebe9ea0370b47b24b373fa25344dc5b56bc5c44a2c48": {
+      "displayName": "VideoCore Template",
+      "source": {
+        "path": "VideoCore.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region-7a12a7ac": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "ccadad59cabbff5c6e8eebe9ea0370b47b24b373fa25344dc5b56bc5c44a2c48.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
