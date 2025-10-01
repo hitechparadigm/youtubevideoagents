@@ -74,7 +74,6 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
                 }],
             resultPath: '$.render'
         });
-        // --- use Chain.start(...) instead of new Chain() ---
         const scriptStep = new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' });
         const ttsStep = new tasks.LambdaInvoke(this, 'TTS', { lambdaFunction: ttsFn, resultPath: '$.tts' });
         const brollStep = new tasks.LambdaInvoke(this, 'Broll', { lambdaFunction: brollFn, resultPath: '$.broll' });
@@ -85,9 +84,13 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
             .next(brollStep)
             .next(renderTask)
             .next(uploadStep);
-        new sfn.StateMachine(this, 'Pipeline', {
+        const sm = new sfn.StateMachine(this, 'Pipeline', {
             definitionBody: sfn.DefinitionBody.fromChainable(definition),
             timeout: aws_cdk_lib_1.Duration.minutes(20)
+        });
+        new aws_cdk_lib_1.CfnOutput(this, 'PipelineArn', {
+            value: sm.stateMachineArn,
+            description: 'Step Functions State Machine ARN'
         });
     }
 }

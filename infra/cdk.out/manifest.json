@@ -529,7 +529,7 @@
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-deploy-role-${AWS::AccountId}-${AWS::Region}",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-cfn-exec-role-${AWS::AccountId}-${AWS::Region}",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/8366c8731b57e1b1256010b99f6d688a7ce127da04383c3686acdb6b716f42cb.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}/4ed581399a32588ab8b22f558fa3c670056ad7226e31dd45e1d37fd5463e9d2b.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
@@ -641,6 +641,12 @@
           {
             "type": "aws:cdk:logicalId",
             "data": "PipelineC660917D"
+          }
+        ],
+        "/VideoWorkflow/PipelineArn": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "PipelineArn"
           }
         ],
         "/VideoWorkflow/CDKMetadata/Default": [

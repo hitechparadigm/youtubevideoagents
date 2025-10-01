@@ -978,12 +978,20 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1VPyU7DMBD9lt4nQ3AvXCkChAQSSrhHU2daXCd2lRm3qiz/O0oKEj295fAWg+b+AesVnaWyva8Gt8XcKlkPdJYuDzRue8L8koJVFwM87cIfL+BoxNzEgWd7wc84OHuZ5ZUVkHVHIqyCjzOArHGTrGfdkDCI8nH3myedknjB/GylSeGLxMP70v8WTtFzAbYGc8s2TU4vr1NMx7npxii3kcsZ5Q+y3y4sM//rUqBhiWmyDMu6Vmnvwr5AiD3jQe5OxqCpsV4dxLlqSkHdyNhc8QfOeO+iPQEAAA=="
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1VPy07DMBD8lt6dJbgXrhQBQgKBEu7R1tm2rhM7yq5bVZb/HTkFiZ7modXMrAZ9/wD1Cs9cmd5Vg91CagWNU3jmLg04bnuE9BK9ERu8etr5P56VxRFSEwYq9oJfYbDmUuSVZcXrDplJGB4LKF7DJhpHskEmxULT7jePO0F2DOnZcBP9N7JT70v/mz8FR1mR0ZBaMnG2cnmdQ5xK042RbyOXZ4Q+0BysX2b+1zmrhjjE2ZBa1rWCe+v35e4zyhQlKx96giPfnbQGXUO9OrK11Ry92JGgueIPuLZMMEcBAAA="
    },
    "Metadata": {
     "aws:cdk:path": "VideoWorkflow/CDKMetadata/Default"
    },
    "Condition": "CDKMetadataAvailable"
+  }
+ },
+ "Outputs": {
+  "PipelineArn": {
+   "Description": "Step Functions State Machine ARN",
+   "Value": {
+    "Ref": "PipelineC660917D"
+   }
   }
  },
  "Conditions": {

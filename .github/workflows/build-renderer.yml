@@ -18,6 +18,19 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: false
+          persist-credentials: false
+
+      - name: Workaround checkout submodule post-cleanup bug
+        run: |
+            git config --global --add safe.directory "$GITHUB_WORKSPACE" || true
+            # Remove any stray submodule config that confuses post-cleanup
+            git config --local --remove-section submodule.youtubevideoagents || true
+            # Ensure .gitmodules exists so 'git submodule foreach' doesn't fatal
+            [ -f .gitmodules ] || touch .gitmodules
+
+      
 
       - name: Configure AWS creds (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
