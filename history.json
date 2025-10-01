@@ -1,0 +1,74 @@
+{
+    "events": [
+        {
+            "timestamp": "2025-09-30T20:45:36.755000-04:00",
+            "type": "ExecutionStarted",
+            "id": 1,
+            "previousEventId": 0,
+            "executionStartedEventDetails": {
+                "input": "{\"jobId\":\"demo-0002\",\"topic\":\"Investments in REITs for 2025: risks, yields, tax treatment (US/CA/UK/EU/AU/NZ)\"}",
+                "inputDetails": {
+                    "truncated": false
+                },
+                "roleArn": "arn:aws:iam::786673323159:role/VideoWorkflow-PipelineRoleD68726F7-PJ9Jdbg681Uw"
+            }
+        },
+        {
+            "timestamp": "2025-09-30T20:45:36.844000-04:00",
+            "type": "TaskStateEntered",
+            "id": 2,
+            "previousEventId": 0,
+            "stateEnteredEventDetails": {
+                "name": "Script",
+                "input": "{\"jobId\":\"demo-0002\",\"topic\":\"Investments in REITs for 2025: risks, yields, tax treatment (US/CA/UK/EU/AU/NZ)\"}",
+                "inputDetails": {
+                    "truncated": false
+                }
+            }
+        },
+        {
+            "timestamp": "2025-09-30T20:45:36.844000-04:00",
+            "type": "TaskScheduled",
+            "id": 3,
+            "previousEventId": 2,
+            "taskScheduledEventDetails": {
+                "resourceType": "lambda",
+                "resource": "invoke",
+                "region": "us-east-1",
+                "parameters": "{\"FunctionName\":\"arn:aws:lambda:us-east-1:786673323159:function:scriptFn\",\"Payload\":{\"jobId\":\"demo-0002\",\"topic\":\"Investments in REITs for 2025: risks, yields, tax treatment (US/CA/UK/EU/AU/NZ)\"}}"
+            }
+        },
+        {
+            "timestamp": "2025-09-30T20:45:36.894000-04:00",
+            "type": "TaskStarted",
+            "id": 4,
+            "previousEventId": 3,
+            "taskStartedEventDetails": {
+                "resourceType": "lambda",
+                "resource": "invoke"
+            }
+        },
+        {
+            "timestamp": "2025-09-30T20:45:37.001000-04:00",
+            "type": "TaskFailed",
+            "id": 5,
+            "previousEventId": 4,
+            "taskFailedEventDetails": {
+                "resourceType": "lambda",
+                "resource": "invoke",
+                "error": "AccessDeniedException",
+                "cause": "{\"errorMessage\":\"An error occurred (AccessDeniedException) when calling the InvokeModel operation: User: arn:aws:sts::786673323159:assumed-role/VideoWorkflow-ScriptFnServiceRoleAA62A4C9-3BIjmo3EhAwF/scriptFn is not authorized to perform: bedrock:InvokeModel on resource: arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0 because no identity-based policy allows the bedrock:InvokeModel action\",\"errorType\":\"AccessDeniedException\",\"requestId\":\"d6bc3ed5-7316-43a4-8c98-422a4735a39f\",\"stackTrace\":[\"  File \\\"/var/task/app.py\\\", line 84, in handler\\n    if name.endswith('scriptFn'): return script_handler(event, context)\\n\",\"  File \\\"/var/task/app.py\\\", line 42, in script_handler\\n    script = _bedrock_script(topic)\\n\",\"  File \\\"/var/task/app.py\\\", line 34, in _bedrock_script\\n    resp = bedrock.invoke_model(modelId=model_id, body=json.dumps(body))\\n\",\"  File \\\"/var/lang/lib/python3.12/site-packages/botocore/client.py\\\", line 602, in _api_call\\n    return self._make_api_call(operation_name, kwargs)\\n\",\"  File \\\"/var/lang/lib/python3.12/site-packages/botocore/context.py\\\", line 123, in wrapper\\n    return func(*args, **kwargs)\\n\",\"  File \\\"/var/lang/lib/python3.12/site-packages/botocore/client.py\\\", line 1078, in _make_api_call\\n    raise error_class(parsed_response, operation_name)\\n\"]}"
+            }
+        },
+        {
+            "timestamp": "2025-09-30T20:45:37.064000-04:00",
+            "type": "ExecutionFailed",
+            "id": 6,
+            "previousEventId": 5,
+            "executionFailedEventDetails": {
+                "error": "AccessDeniedException",
+                "cause": "{\"errorMessage\":\"An error occurred (AccessDeniedException) when calling the InvokeModel operation: User: arn:aws:sts::786673323159:assumed-role/VideoWorkflow-ScriptFnServiceRoleAA62A4C9-3BIjmo3EhAwF/scriptFn is not authorized to perform: bedrock:InvokeModel on resource: arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0 because no identity-based policy allows the bedrock:InvokeModel action\",\"errorType\":\"AccessDeniedException\",\"requestId\":\"d6bc3ed5-7316-43a4-8c98-422a4735a39f\",\"stackTrace\":[\"  File \\\"/var/task/app.py\\\", line 84, in handler\\n    if name.endswith('scriptFn'): return script_handler(event, context)\\n\",\"  File \\\"/var/task/app.py\\\", line 42, in script_handler\\n    script = _bedrock_script(topic)\\n\",\"  File \\\"/var/task/app.py\\\", line 34, in _bedrock_script\\n    resp = bedrock.invoke_model(modelId=model_id, body=json.dumps(body))\\n\",\"  File \\\"/var/lang/lib/python3.12/site-packages/botocore/client.py\\\", line 602, in _api_call\\n    return self._make_api_call(operation_name, kwargs)\\n\",\"  File \\\"/var/lang/lib/python3.12/site-packages/botocore/context.py\\\", line 123, in wrapper\\n    return func(*args, **kwargs)\\n\",\"  File \\\"/var/lang/lib/python3.12/site-packages/botocore/client.py\\\", line 1078, in _make_api_call\\n    raise error_class(parsed_response, operation_name)\\n\"]}"
+            }
+        }
+    ]
+}

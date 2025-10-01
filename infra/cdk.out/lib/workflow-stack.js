@@ -54,7 +54,7 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
                 JOBS_TABLE: props.jobsTable.tableName,
             },
         };
-        // Lambdas
+        // ---- Lambdas ----
         const scriptFn = new lambda.Function(this, 'ScriptFn', {
             ...common,
             functionName: 'scriptFn',
@@ -76,34 +76,39 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
             timeout: aws_cdk_lib_1.Duration.seconds(120),
             code: lambda.Code.fromAsset('../services'),
         });
-        // S3 / Dynamo permissions
+        // ---- Data access ----
         props.mediaBucket.grantReadWrite(scriptFn);
         props.mediaBucket.grantReadWrite(ttsFn);
         props.mediaBucket.grantReadWrite(brollFn);
         props.mediaBucket.grantReadWrite(uploadFn);
         props.jobsTable.grantReadWriteData(scriptFn);
         props.jobsTable.grantReadWriteData(uploadFn);
-        // --- Bedrock permission for the script generator ---
+        // ---- Permissions: Bedrock for scriptFn ----
         scriptFn.addToRolePolicy(new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
             actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
             resources: [`arn:aws:bedrock:${region}::foundation-model/*`],
+            effect: iam.Effect.ALLOW,
         }));
-        // --- Secrets Manager read for API keys (Pexels / ElevenLabs / YouTube) ---
+        // ---- Permissions: Polly for ttsFn ----
+        ttsFn.addToRolePolicy(new iam.PolicyStatement({
+            actions: ['polly:SynthesizeSpeech'],
+            resources: ['*'],
+            effect: iam.Effect.ALLOW,
+        }));
+        // ---- Permissions: Secrets Manager (Pexels / ElevenLabs / YouTube) ----
         const secretArns = [
             `arn:aws:secretsmanager:${region}:${account}:secret:pexels/apiKey-*`,
             `arn:aws:secretsmanager:${region}:${account}:secret:elevenlabs/apiKey-*`,
             `arn:aws:secretsmanager:${region}:${account}:secret:youtube/oauth-*`,
         ];
-        // brollFn needs Pexels, ttsFn may need ElevenLabs/Polly, uploadFn needs YouTube OAuth
         [brollFn, ttsFn, uploadFn].forEach(fn => {
             fn.addToRolePolicy(new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
                 actions: ['secretsmanager:GetSecretValue'],
                 resources: secretArns,
+                effect: iam.Effect.ALLOW,
             }));
         });
-        // ECS render task
+        // ---- ECS render task ----
         const renderTask = new tasks.EcsRunTask(this, 'RenderECS', {
             integrationPattern: sfn.IntegrationPattern.RUN_JOB,
             cluster: props.cluster,
@@ -116,7 +121,7 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
                 }],
             resultPath: '$.render',
         });
-        // Steps
+        // ---- Steps ----
         const scriptStep = new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' });
         const ttsStep = new tasks.LambdaInvoke(this, 'TTS', { lambdaFunction: ttsFn, resultPath: '$.tts' });
         const brollStep = new tasks.LambdaInvoke(this, 'Broll', { lambdaFunction: brollFn, resultPath: '$.broll' });
