@@ -6,6 +6,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 export class WorkflowStack extends Stack {
   constructor(
@@ -19,23 +20,47 @@ export class WorkflowStack extends Stack {
   ) {
     super(scope, id, props);
 
-    const common = {
+    const region = Stack.of(this).region;
+    const account = Stack.of(this).account;
+
+    const common: Omit<lambda.FunctionProps, 'code'> = {
       runtime: lambda.Runtime.PYTHON_3_12,
       timeout: Duration.seconds(60),
       memorySize: 512,
       handler: 'app.handler',
       environment: {
         MEDIA_BUCKET: props.mediaBucket.bucketName,
-        JOBS_TABLE: props.jobsTable.tableName
+        JOBS_TABLE: props.jobsTable.tableName,
       },
-      code: lambda.Code.fromAsset('../services')
     };
 
-    const scriptFn = new lambda.Function(this, 'ScriptFn', { ...common, functionName: 'scriptFn' });
-    const ttsFn    = new lambda.Function(this, 'TtsFn',    { ...common, functionName: 'ttsFn' });
-    const brollFn  = new lambda.Function(this, 'BrollFn',  { ...common, functionName: 'brollFn' });
-    const uploadFn = new lambda.Function(this, 'UploadFn', { ...common, functionName: 'uploadFn', timeout: Duration.seconds(120) });
+    // Lambdas
+    const scriptFn = new lambda.Function(this, 'ScriptFn', {
+      ...common,
+      functionName: 'scriptFn',
+      code: lambda.Code.fromAsset('../services'),
+    });
 
+    const ttsFn = new lambda.Function(this, 'TtsFn', {
+      ...common,
+      functionName: 'ttsFn',
+      code: lambda.Code.fromAsset('../services'),
+    });
+
+    const brollFn = new lambda.Function(this, 'BrollFn', {
+      ...common,
+      functionName: 'brollFn',
+      code: lambda.Code.fromAsset('../services'),
+    });
+
+    const uploadFn = new lambda.Function(this, 'UploadFn', {
+      ...common,
+      functionName: 'uploadFn',
+      timeout: Duration.seconds(120),
+      code: lambda.Code.fromAsset('../services'),
+    });
+
+    // S3 / Dynamo permissions
     props.mediaBucket.grantReadWrite(scriptFn);
     props.mediaBucket.grantReadWrite(ttsFn);
     props.mediaBucket.grantReadWrite(brollFn);
@@ -43,6 +68,30 @@ export class WorkflowStack extends Stack {
     props.jobsTable.grantReadWriteData(scriptFn);
     props.jobsTable.grantReadWriteData(uploadFn);
 
+    // --- Bedrock permission for the script generator ---
+    scriptFn.addToRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+      resources: [`arn:aws:bedrock:${region}::foundation-model/*`],
+    }));
+
+    // --- Secrets Manager read for API keys (Pexels / ElevenLabs / YouTube) ---
+    const secretArns = [
+      `arn:aws:secretsmanager:${region}:${account}:secret:pexels/apiKey-*`,
+      `arn:aws:secretsmanager:${region}:${account}:secret:elevenlabs/apiKey-*`,
+      `arn:aws:secretsmanager:${region}:${account}:secret:youtube/oauth-*`,
+    ];
+
+    // brollFn needs Pexels, ttsFn may need ElevenLabs/Polly, uploadFn needs YouTube OAuth
+    [brollFn, ttsFn, uploadFn].forEach(fn => {
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: secretArns,
+      }));
+    });
+
+    // ECS render task
     const renderTask = new tasks.EcsRunTask(this, 'RenderECS', {
       integrationPattern: sfn.IntegrationPattern.RUN_JOB,
       cluster: props.cluster,
@@ -51,11 +100,12 @@ export class WorkflowStack extends Stack {
       launchTarget: new tasks.EcsFargateLaunchTarget(),
       containerOverrides: [{
         containerDefinition: props.rendererTask.defaultContainer!,
-        environment: [{ name: 'JOB_ID', value: sfn.JsonPath.stringAt('$.jobId') }]
+        environment: [{ name: 'JOB_ID', value: sfn.JsonPath.stringAt('$.jobId') }],
       }],
-      resultPath: '$.render'
+      resultPath: '$.render',
     });
 
+    // Steps
     const scriptStep = new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' });
     const ttsStep    = new tasks.LambdaInvoke(this, 'TTS',    { lambdaFunction: ttsFn,    resultPath: '$.tts'    });
     const brollStep  = new tasks.LambdaInvoke(this, 'Broll',  { lambdaFunction: brollFn,  resultPath: '$.broll'  });
@@ -70,12 +120,12 @@ export class WorkflowStack extends Stack {
 
     const sm = new sfn.StateMachine(this, 'Pipeline', {
       definitionBody: sfn.DefinitionBody.fromChainable(definition),
-      timeout: Duration.minutes(20)
+      timeout: Duration.minutes(20),
     });
 
     new CfnOutput(this, 'PipelineArn', {
       value: sm.stateMachineArn,
-      description: 'Step Functions State Machine ARN'
+      description: 'Step Functions State Machine ARN',
     });
   }
 }

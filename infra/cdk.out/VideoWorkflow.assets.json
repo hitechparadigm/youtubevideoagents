@@ -15,16 +15,16 @@
         }
       }
     },
-    "4ed581399a32588ab8b22f558fa3c670056ad7226e31dd45e1d37fd5463e9d2b": {
+    "e59809469050e0fa1dc45e2a8ad4879235a0e66ba2ee01268a7c1a6b8853bd70": {
       "displayName": "VideoWorkflow Template",
       "source": {
         "path": "VideoWorkflow.template.json",
         "packaging": "file"
       },
       "destinations": {
-        "current_account-current_region-fc4e16ad": {
+        "current_account-current_region-ed5b29c8": {
           "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
-          "objectKey": "4ed581399a32588ab8b22f558fa3c670056ad7226e31dd45e1d37fd5463e9d2b.json",
+          "objectKey": "e59809469050e0fa1dc45e2a8ad4879235a0e66ba2ee01268a7c1a6b8853bd70.json",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
         }
       }
