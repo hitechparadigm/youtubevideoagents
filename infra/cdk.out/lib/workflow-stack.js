@@ -38,7 +38,9 @@ const aws_cdk_lib_1 = require("aws-cdk-lib");
 const sfn = __importStar(require("aws-cdk-lib/aws-stepfunctions"));
 const tasks = __importStar(require("aws-cdk-lib/aws-stepfunctions-tasks"));
 const lambda = __importStar(require("aws-cdk-lib/aws-lambda"));
+const ec2 = __importStar(require("aws-cdk-lib/aws-ec2"));
 const iam = __importStar(require("aws-cdk-lib/aws-iam"));
+const logs = __importStar(require("aws-cdk-lib/aws-logs"));
 class WorkflowStack extends aws_cdk_lib_1.Stack {
     constructor(scope, id, props) {
         super(scope, id, props);
@@ -54,48 +56,44 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
                 JOBS_TABLE: props.jobsTable.tableName,
             },
         };
-        // ---- Lambdas ----
+        // Lambdas
         const scriptFn = new lambda.Function(this, 'ScriptFn', {
-            ...common,
-            functionName: 'scriptFn',
+            ...common, functionName: 'scriptFn',
             code: lambda.Code.fromAsset('../services'),
         });
         const ttsFn = new lambda.Function(this, 'TtsFn', {
-            ...common,
-            functionName: 'ttsFn',
+            ...common, functionName: 'ttsFn',
             code: lambda.Code.fromAsset('../services'),
         });
         const brollFn = new lambda.Function(this, 'BrollFn', {
-            ...common,
-            functionName: 'brollFn',
+            ...common, functionName: 'brollFn',
             code: lambda.Code.fromAsset('../services'),
         });
         const uploadFn = new lambda.Function(this, 'UploadFn', {
-            ...common,
-            functionName: 'uploadFn',
+            ...common, functionName: 'uploadFn',
             timeout: aws_cdk_lib_1.Duration.seconds(120),
             code: lambda.Code.fromAsset('../services'),
         });
-        // ---- Data access ----
+        // Data access
         props.mediaBucket.grantReadWrite(scriptFn);
         props.mediaBucket.grantReadWrite(ttsFn);
         props.mediaBucket.grantReadWrite(brollFn);
         props.mediaBucket.grantReadWrite(uploadFn);
         props.jobsTable.grantReadWriteData(scriptFn);
+        props.jobsTable.grantReadWriteData(ttsFn);
         props.jobsTable.grantReadWriteData(uploadFn);
-        // ---- Permissions: Bedrock for scriptFn ----
+        // Bedrock & Polly
         scriptFn.addToRolePolicy(new iam.PolicyStatement({
             actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
             resources: [`arn:aws:bedrock:${region}::foundation-model/*`],
             effect: iam.Effect.ALLOW,
         }));
-        // ---- Permissions: Polly for ttsFn ----
         ttsFn.addToRolePolicy(new iam.PolicyStatement({
             actions: ['polly:SynthesizeSpeech'],
             resources: ['*'],
             effect: iam.Effect.ALLOW,
         }));
-        // ---- Permissions: Secrets Manager (Pexels / ElevenLabs / YouTube) ----
+        // Secrets (Pexels/ElevenLabs/YouTube)
         const secretArns = [
             `arn:aws:secretsmanager:${region}:${account}:secret:pexels/apiKey-*`,
             `arn:aws:secretsmanager:${region}:${account}:secret:elevenlabs/apiKey-*`,
@@ -108,20 +106,36 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
                 effect: iam.Effect.ALLOW,
             }));
         });
-        // ---- ECS render task ----
+        // Networking for Fargate
+        const vpc = props.cluster.vpc;
+        const rendererSG = new ec2.SecurityGroup(this, 'RendererTaskSg', {
+            vpc,
+            description: 'ECS Fargate task for renderer (egress only)',
+            allowAllOutbound: true,
+        });
+        // ECS render task
+        props.mediaBucket.grantReadWrite(props.rendererTask.taskRole);
         const renderTask = new tasks.EcsRunTask(this, 'RenderECS', {
             integrationPattern: sfn.IntegrationPattern.RUN_JOB,
             cluster: props.cluster,
             taskDefinition: props.rendererTask,
             assignPublicIp: true,
             launchTarget: new tasks.EcsFargateLaunchTarget(),
+            subnets: { subnetType: ec2.SubnetType.PUBLIC },
+            securityGroups: [rendererSG],
             containerOverrides: [{
                     containerDefinition: props.rendererTask.defaultContainer,
-                    environment: [{ name: 'JOB_ID', value: sfn.JsonPath.stringAt('$.jobId') }],
+                    environment: [
+                        { name: 'JOB_ID', value: sfn.JsonPath.stringAt('$.jobId') },
+                        { name: 'MEDIA_BUCKET', value: props.mediaBucket.bucketName },
+                        { name: 'AWS_REGION', value: region },
+                    ],
                 }],
             resultPath: '$.render',
+            // >>> extend the Step Functions state timeout for this task <<<
+            taskTimeout: sfn.Timeout.duration(aws_cdk_lib_1.Duration.minutes(15)),
         });
-        // ---- Steps ----
+        // Steps
         const scriptStep = new tasks.LambdaInvoke(this, 'Script', { lambdaFunction: scriptFn, resultPath: '$.script' });
         const ttsStep = new tasks.LambdaInvoke(this, 'TTS', { lambdaFunction: ttsFn, resultPath: '$.tts' });
         const brollStep = new tasks.LambdaInvoke(this, 'Broll', { lambdaFunction: brollFn, resultPath: '$.broll' });
@@ -132,14 +146,42 @@ class WorkflowStack extends aws_cdk_lib_1.Stack {
             .next(brollStep)
             .next(renderTask)
             .next(uploadStep);
+        // Logs for the state machine
+        const smLogs = new logs.LogGroup(this, 'PipelineLogs', {
+            retention: logs.RetentionDays.ONE_WEEK,
+        });
         const sm = new sfn.StateMachine(this, 'Pipeline', {
             definitionBody: sfn.DefinitionBody.fromChainable(definition),
             timeout: aws_cdk_lib_1.Duration.minutes(20),
+            logs: {
+                destination: smLogs,
+                level: sfn.LogLevel.ALL,
+                includeExecutionData: true,
+            },
         });
-        new aws_cdk_lib_1.CfnOutput(this, 'PipelineArn', {
-            value: sm.stateMachineArn,
-            description: 'Step Functions State Machine ARN',
-        });
+        // Allow SFN to run ECS and manage EventBridge callback
+        const taskDefArn = props.rendererTask.taskDefinitionArn;
+        const taskRoleArn = props.rendererTask.taskRole.roleArn;
+        const execRoleArn = props.rendererTask.obtainExecutionRole().roleArn;
+        sm.addToRolePolicy(new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['ecs:RunTask', 'ecs:StopTask', 'ecs:DescribeTasks'],
+            resources: ['*'], // keep broad to avoid family/version drift issues
+        }));
+        sm.addToRolePolicy(new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ['iam:PassRole'],
+            resources: [taskRoleArn, execRoleArn],
+        }));
+        sm.addToRolePolicy(new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: [
+                'events:PutRule', 'events:PutTargets', 'events:DescribeRule',
+                'events:DeleteRule', 'events:RemoveTargets'
+            ],
+            resources: ['*'],
+        }));
+        new aws_cdk_lib_1.CfnOutput(this, 'PipelineArn', { value: sm.stateMachineArn });
     }
 }
 exports.WorkflowStack = WorkflowStack;

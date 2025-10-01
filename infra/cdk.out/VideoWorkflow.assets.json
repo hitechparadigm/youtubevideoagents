@@ -1,30 +1,30 @@
 {
   "version": "48.0.0",
   "files": {
-    "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472": {
+    "7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0": {
       "displayName": "ScriptFn/Code",
       "source": {
-        "path": "asset.a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472",
+        "path": "asset.7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0",
         "packaging": "zip"
       },
       "destinations": {
-        "current_account-current_region-b0ab4557": {
+        "current_account-current_region-7dd65751": {
           "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
-          "objectKey": "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472.zip",
+          "objectKey": "7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0.zip",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
         }
       }
     },
-    "e7f0440817b82a11efc2457e789ac0bb66b3e992de8faefdb12fc56f9d3c55da": {
+    "26fb96c39245a3eaec7d61299be3267757041ec5972c405ed72534f0d94a9847": {
       "displayName": "VideoWorkflow Template",
       "source": {
         "path": "VideoWorkflow.template.json",
         "packaging": "file"
       },
       "destinations": {
-        "current_account-current_region-ad3e2482": {
+        "current_account-current_region-d82b7ccd": {
           "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
-          "objectKey": "e7f0440817b82a11efc2457e789ac0bb66b3e992de8faefdb12fc56f9d3c55da.json",
+          "objectKey": "26fb96c39245a3eaec7d61299be3267757041ec5972c405ed72534f0d94a9847.json",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
         }
       }

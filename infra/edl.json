@@ -1,0 +1,6 @@
+{
+  "audio_key": "voice.wav",
+  "tracks": [
+    { "src_s3": "broll/default.mp4", "start": 0, "duration": 5 }
+  ]
+}

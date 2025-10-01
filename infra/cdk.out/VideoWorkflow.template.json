@@ -135,7 +135,7 @@
      "S3Bucket": {
       "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
      },
-     "S3Key": "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472.zip"
+     "S3Key": "7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0.zip"
     },
     "Environment": {
      "Variables": {
@@ -165,7 +165,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "VideoWorkflow/ScriptFn/Resource",
-    "aws:asset:path": "asset.a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472",
+    "aws:asset:path": "asset.7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0",
     "aws:asset:is-bundled": false,
     "aws:asset:property": "Code"
    }
@@ -237,6 +237,31 @@
            "/*"
           ]
          ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:Scan",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::ImportValue": "VideoCore:ExportsOutputFnGetAttJobsDF1CC2D4Arn85C9CFC3"
+        },
+        {
+         "Ref": "AWS::NoValue"
         }
        ]
       },
@@ -320,7 +345,7 @@
      "S3Bucket": {
       "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
      },
-     "S3Key": "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472.zip"
+     "S3Key": "7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0.zip"
     },
     "Environment": {
      "Variables": {
@@ -350,7 +375,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "VideoWorkflow/TtsFn/Resource",
-    "aws:asset:path": "asset.a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472",
+    "aws:asset:path": "asset.7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0",
     "aws:asset:is-bundled": false,
     "aws:asset:property": "Code"
    }
@@ -500,7 +525,7 @@
      "S3Bucket": {
       "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
      },
-     "S3Key": "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472.zip"
+     "S3Key": "7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0.zip"
     },
     "Environment": {
      "Variables": {
@@ -530,7 +555,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "VideoWorkflow/BrollFn/Resource",
-    "aws:asset:path": "asset.a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472",
+    "aws:asset:path": "asset.7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0",
     "aws:asset:is-bundled": false,
     "aws:asset:property": "Code"
    }
@@ -705,7 +730,7 @@
      "S3Bucket": {
       "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}"
      },
-     "S3Key": "a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472.zip"
+     "S3Key": "7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0.zip"
     },
     "Environment": {
      "Variables": {
@@ -735,15 +760,15 @@
    ],
    "Metadata": {
     "aws:cdk:path": "VideoWorkflow/UploadFn/Resource",
-    "aws:asset:path": "asset.a1a1b1cc73b654935a0e74e41cc2176fbcd5493b05e7ac2470bf066f0691f472",
+    "aws:asset:path": "asset.7855fa760709001ed710ec0ae5a9e0fede9384ff7e7791818e55f1a9f98208b0",
     "aws:asset:is-bundled": false,
     "aws:asset:property": "Code"
    }
   },
-  "RenderECSSecurityGroup99CE834F": {
+  "RendererTaskSg842A9423": {
    "Type": "AWS::EC2::SecurityGroup",
    "Properties": {
-    "GroupDescription": "VideoWorkflow/RenderECS/SecurityGroup",
+    "GroupDescription": "ECS Fargate task for renderer (egress only)",
     "SecurityGroupEgress": [
      {
       "CidrIp": "0.0.0.0/0",
@@ -756,7 +781,18 @@
     }
    },
    "Metadata": {
-    "aws:cdk:path": "VideoWorkflow/RenderECS/SecurityGroup/Resource"
+    "aws:cdk:path": "VideoWorkflow/RendererTaskSg/Resource"
+   }
+  },
+  "PipelineLogsB6C63DF7": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "RetentionInDays": 7
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "VideoWorkflow/PipelineLogs/Resource"
    }
   },
   "PipelineRoleD68726F7": {
@@ -1051,6 +1087,40 @@
          ]
         }
        ]
+      },
+      {
+       "Action": [
+        "logs:CreateLogDelivery",
+        "logs:GetLogDelivery",
+        "logs:UpdateLogDelivery",
+        "logs:DeleteLogDelivery",
+        "logs:ListLogDeliveries",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "ecs:RunTask",
+        "ecs:StopTask",
+        "ecs:DescribeTasks"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "events:PutRule",
+        "events:PutTargets",
+        "events:DescribeRule",
+        "events:DeleteRule",
+        "events:RemoveTargets"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
       }
      ],
      "Version": "2012-10-17"
@@ -1106,7 +1176,7 @@
          "Arn"
         ]
        },
-       "\",\"Payload.$\":\"$\"}},\"RenderECS\":{\"Next\":\"Upload\",\"Type\":\"Task\",\"ResultPath\":\"$.render\",\"Resource\":\"arn:",
+       "\",\"Payload.$\":\"$\"}},\"RenderECS\":{\"Next\":\"Upload\",\"Type\":\"Task\",\"TimeoutSeconds\":900,\"ResultPath\":\"$.render\",\"Resource\":\"arn:",
        {
         "Ref": "AWS::Partition"
        },
@@ -1125,11 +1195,19 @@
        "\"],\"SecurityGroups\":[\"",
        {
         "Fn::GetAtt": [
-         "RenderECSSecurityGroup99CE834F",
+         "RendererTaskSg842A9423",
          "GroupId"
         ]
        },
-       "\"]}},\"Overrides\":{\"ContainerOverrides\":[{\"Name\":\"Renderer\",\"Environment\":[{\"Name\":\"JOB_ID\",\"Value.$\":\"$.jobId\"}]}]},\"LaunchType\":\"FARGATE\"}},\"Upload\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$.upload\",\"Resource\":\"arn:",
+       "\"]}},\"Overrides\":{\"ContainerOverrides\":[{\"Name\":\"Renderer\",\"Environment\":[{\"Name\":\"JOB_ID\",\"Value.$\":\"$.jobId\"},{\"Name\":\"MEDIA_BUCKET\",\"Value\":\"",
+       {
+        "Fn::ImportValue": "VideoCore:ExportsOutputRefMediaBucketBCBB02BA270A7AEB"
+       },
+       "\"},{\"Name\":\"AWS_REGION\",\"Value\":\"",
+       {
+        "Ref": "AWS::Region"
+       },
+       "\"}]}]},\"LaunchType\":\"FARGATE\"}},\"Upload\":{\"End\":true,\"Retry\":[{\"ErrorEquals\":[\"Lambda.ClientExecutionTimeoutException\",\"Lambda.ServiceException\",\"Lambda.AWSLambdaException\",\"Lambda.SdkClientException\"],\"IntervalSeconds\":2,\"MaxAttempts\":6,\"BackoffRate\":2}],\"Type\":\"Task\",\"ResultPath\":\"$.upload\",\"Resource\":\"arn:",
        {
         "Ref": "AWS::Partition"
        },
@@ -1143,6 +1221,22 @@
        "\",\"Payload.$\":\"$\"}}},\"TimeoutSeconds\":1200}"
       ]
      ]
+    },
+    "LoggingConfiguration": {
+     "Destinations": [
+      {
+       "CloudWatchLogsLogGroup": {
+        "LogGroupArn": {
+         "Fn::GetAtt": [
+          "PipelineLogsB6C63DF7",
+          "Arn"
+         ]
+        }
+       }
+      }
+     ],
+     "IncludeExecutionData": true,
+     "Level": "ALL"
     },
     "RoleArn": {
      "Fn::GetAtt": [
@@ -1164,7 +1258,7 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/1VPy07DMBD8lt6dJbgXrhQBQgKBEu7R1tm2rhM7yq5bVZb/HTkFiZ7modXMrAZ9/wD1Cs9cmd5Vg91CagWNU3jmLg04bnuE9BK9ERu8etr5P56VxRFSEwYq9oJfYbDmUuSVZcXrDplJGB4LKF7DJhpHskEmxULT7jePO0F2DOnZcBP9N7JT70v/mz8FR1mR0ZBaMnG2cnmdQ5xK042RbyOXZ4Q+0BysX2b+1zmrhjjE2ZBa1rWCe+v35e4zyhQlKx96giPfnbQGXUO9OrK11Ry92JGgueIPuLZMMEcBAAA="
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/11Py07DMBD8lt43S3AvXCkChFQESrhHW2cbXCd2lLVbVZb/HSWlCDjNQ/uYUahu77Bc0UkK3dqiNztMdSBtgU7SpJ6GXUuYnqLTwXgHD3t35RkMDZgq3/NsL/jue6PPs7ywDLJuSISD4P0MIGvcRG05bEgYWCtMNes4mXB+nnwc590/RgYJPO6/n0oTSKxgetRSRfdBYmG7hHxxR285Q+87wbT13c+5K/93aSka+JX0p3FLhd86Z6hYfJw0w5K8DtQZ181zbzGMMWRwvmU8yM1RKVQllquDGFNM0QUzMFYX/AIpKum9YwEAAA=="
    },
    "Metadata": {
     "aws:cdk:path": "VideoWorkflow/CDKMetadata/Default"
@@ -1174,7 +1268,6 @@
  },
  "Outputs": {
   "PipelineArn": {
-   "Description": "Step Functions State Machine ARN",
    "Value": {
     "Ref": "PipelineC660917D"
    }

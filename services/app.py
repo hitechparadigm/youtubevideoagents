@@ -182,23 +182,42 @@ def tts_handler(event, context):
     return {"ok": True, "voiceKey": key_out, "chunks": len(chunks)}
 
 
+# --- DROP-IN: replace your existing broll_handler with this ---
+import os, json, boto3
+
+_s3 = boto3.client("s3")
+
 def broll_handler(event, context):
     """
-    Minimal EDL generator (keeps your earlier logic if you had one).
-    Writes jobs/{jobId}/edl.json.
+    Writes a renderer-compatible EDL (tracks -> clips) for the given job.
+    Compatible with your current renderer/render.py.
     """
-    job_id = event["jobId"]
-    # Use a default asset; your renderer will loop/trim as needed.
+    job_id = event.get("jobId") or event["job_id"]
+    bucket = os.environ["MEDIA_BUCKET"]  # this env var is already set in the stack
+
     edl = {
-        "fps": 30,
-        "clips": [
-            {"src": "s3://{}/assets/default_clip.mp4".format(MEDIA_BUCKET), "start": 0, "dur": 15}
-        ],
-        "audio": "s3://{}/jobs/{}/voice.wav".format(MEDIA_BUCKET, job_id)
+        "audio_key": "voice.wav",
+        "tracks": [
+            {
+                "clips": [
+                    { "s3_key": "broll/default.mp4", "start": 0, "duration": 15 }
+                ]
+            }
+        ]
     }
-    key = _safe_key("jobs", job_id, "edl.json")
-    s3.put_object(Bucket=MEDIA_BUCKET, Key=key, Body=json.dumps(edl).encode("utf-8"), ContentType="application/json")
-    return {"ok": True, "edlKey": key}
+
+    body = json.dumps(edl).encode("utf-8")
+    common_put = dict(Bucket=bucket, Body=body, ContentType="application/json", CacheControl="no-cache")
+
+    key_jobs = f"jobs/{job_id}/edl.json"
+    key_root = f"{job_id}/edl.json"          # optional fallback your renderer also checks
+
+    _s3.put_object(Key=key_jobs, **common_put)
+    _s3.put_object(Key=key_root, **common_put)
+
+    # Return something useful to the state machine if needed
+    return {"edl_key": key_jobs, "bucket": bucket}
+
 
 
 def upload_handler(event, context):
