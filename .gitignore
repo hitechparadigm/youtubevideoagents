@@ -1,0 +1,18 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / CDK
+node_modules/
+cdk.out/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Lambda build artifacts (but keep source!)
+lambdas/*/*.dist-info/
+lambdas/*/*.egg-info/
+lambdas/*/site-packages/
+lambdas/*/__pycache__/

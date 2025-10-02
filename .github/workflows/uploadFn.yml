@@ -3,23 +3,19 @@ name: Deploy uploadFn
 on:
   push:
     paths:
-      - "lambdas/uploadFn/**"
-      - ".github/workflows/uploadFn.yml"
-
-permissions:
-  id-token: write
-  contents: read
-
-# Required variables: AWS_REGION, AWS_ROLE_ARN
-# Optional: LAMBDA_FUNCTION_NAME (defaults to 'uploadFn')
-env:
-  AWS_REGION:           ${{ vars.AWS_REGION }}
-  AWS_ROLE_ARN:         ${{ vars.AWS_ROLE_ARN }}
-  LAMBDA_FUNCTION_NAME: ${{ vars.LAMBDA_FUNCTION_NAME || 'uploadFn' }}
+      - 'lambdas/uploadFn/**'
+      - '.github/workflows/uploadFn.yml'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      LAMBDA_FUNCTION_NAME: uploadFn
 
     steps:
       - name: Checkout
@@ -28,43 +24,22 @@ jobs:
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-          output-env-credentials: true
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Vendor dependencies & zip
+      - name: Zip & update function
+        shell: bash
         working-directory: lambdas/uploadFn
-        shell: bash
         run: |
           set -euo pipefail
-          rm -rf __pycache__ */__pycache__
           python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then
-            python -m pip install -r requirements.txt -t .
-          fi
-          zip -r ../uploadFn.zip . -x "*.git*"
-
-      - name: Update Lambda code
-        shell: bash
-        run: |
-          set -euo pipefail
+          pip install -r requirements.txt -t .
+          zip -r9 /tmp/uploadFn.zip .
           aws lambda update-function-code \
             --function-name "${LAMBDA_FUNCTION_NAME}" \
-            --zip-file "fileb://lambdas/uploadFn.zip" >/dev/null
-
-      - name: Set handler (idempotent)
-        shell: bash
-        run: |
+            --zip-file fileb:///tmp/uploadFn.zip >/dev/null
+          # Ensure handler matches our file
           aws lambda update-function-configuration \
             --function-name "${LAMBDA_FUNCTION_NAME}" \
             --handler app.lambda_handler >/dev/null
-
-      - name: Wait for update
-        shell: bash
-        run: aws lambda wait function-updated --function-name "${LAMBDA_FUNCTION_NAME}"

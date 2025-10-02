@@ -3,24 +3,20 @@ name: Build & Deploy Renderer
 on:
   push:
     paths:
-      - "renderer/**"
-      - ".github/workflows/renderer.yml"
-
-permissions:
-  id-token: write   # for AWS OIDC
-  contents: read
-
-# Pull values from Repository → Settings → Secrets and variables → Actions → Variables
-# Required: AWS_REGION, AWS_ROLE_ARN, ECR_REGISTRY, ECR_REPOSITORY
-env:
-  AWS_REGION:      ${{ vars.AWS_REGION }}
-  AWS_ROLE_ARN:    ${{ vars.AWS_ROLE_ARN }}
-  ECR_REGISTRY:    ${{ vars.ECR_REGISTRY }}
-  ECR_REPOSITORY:  ${{ vars.ECR_REPOSITORY }}
+      - 'renderer/**'
+      - '.github/workflows/renderer.yml'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
     steps:
       - name: Checkout
@@ -29,8 +25,8 @@ jobs:
       - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
           output-env-credentials: true
 
@@ -52,76 +48,52 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          TD_ARN=$(aws cloudformation describe-stack-resources --stack-name VideoCompute \
+            --query "StackResources[?ResourceType=='AWS::ECS::TaskDefinition'].PhysicalResourceId" --output text)
 
-          # Current TaskDefinition ARN from the VideoCompute stack
-          TD_OLD=$(aws cloudformation describe-stack-resources \
-            --stack-name VideoCompute \
-            --query "StackResources[?ResourceType=='AWS::ECS::TaskDefinition'].PhysicalResourceId" \
-            --output text)
+          aws ecs describe-task-definition --task-definition "$TD_ARN" --query taskDefinition > td.json
 
-          # Pull current TD JSON
-          aws ecs describe-task-definition --task-definition "$TD_OLD" --query taskDefinition > td.json
-
-          # Rewrite the image for the "Renderer" container and strip read-only fields
           python3 - <<'PY'
-          import json, os
-          with open('td.json','r') as f:
-              td = json.load(f)
+import json, os
+with open('td.json','r') as f:
+    td = json.load(f)
 
-          for k in ['taskDefinitionArn','revision','status','requiresAttributes',
-                    'compatibilities','registeredAt','registeredBy']:
-              td.pop(k, None)
+for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']:
+    td.pop(k, None)
 
-          for c in td.get('containerDefinitions', []):
-              if c.get('name') == 'Renderer':
-                  c['image'] = os.environ['IMAGE_URI']
+for c in td.get('containerDefinitions', []):
+    if c.get('name') == 'Renderer':
+        c['image'] = os.environ['IMAGE_URI']
 
-          with open('td.new.json','w') as f:
-              json.dump(td, f)
-          PY
+with open('td.new.json','w') as f:
+    json.dump(td, f)
+PY
 
-          # Register a new revision
-          TD_NEW=$(aws ecs register-task-definition \
-            --cli-input-json file://td.new.json \
-            --query taskDefinition.taskDefinitionArn \
-            --output text)
-
-          # Capture the family name (stable logical id)
-          FAMILY=$(aws ecs describe-task-definition \
-            --task-definition "${TD_NEW}" \
-            --query 'taskDefinition.family' \
-            --output text)
-
-          echo "TD_NEW=${TD_NEW}"
+          TD_NEW=$(aws ecs register-task-definition --cli-input-json file://td.new.json \
+                   --query taskDefinition.taskDefinitionArn --output text)
+          FAMILY=$(aws ecs describe-task-definition --task-definition "$TD_NEW" \
+                   --query 'taskDefinition.family' --output text)
           echo "FAMILY=${FAMILY}" >> "$GITHUB_ENV"
 
       - name: Ensure Step Functions uses the family (not a pinned rev)
         shell: bash
         run: |
           set -euo pipefail
+          SM_ARN=$(aws cloudformation describe-stack-resources --stack-name VideoWorkflow \
+            --query "StackResources[?ResourceType=='AWS::StepFunctions::StateMachine'].PhysicalResourceId" --output text)
 
-          # State Machine ARN from VideoWorkflow stack
-          SM_ARN=$(aws cloudformation describe-stack-resources \
-            --stack-name VideoWorkflow \
-            --query "StackResources[?ResourceType=='AWS::StepFunctions::StateMachine'].PhysicalResourceId" \
-            --output text)
+          aws stepfunctions describe-state-machine --state-machine-arn "$SM_ARN" \
+            --query definition --output text > def_raw.json
 
-          # Pull definition (single-line JSON string)
-          DEF=$(aws stepfunctions describe-state-machine \
-            --state-machine-arn "${SM_ARN}" \
-            --query definition \
-            --output text)
-
-          # Rewrite TaskDefinition to the FAMILY value
           python3 - <<'PY'
-          import json, os, sys
-          d = json.loads(os.environ['DEF'])
-          d['States']['RenderECS']['Parameters']['TaskDefinition'] = os.environ['FAMILY']
-          with open('def.json','w') as f:
-              json.dump(d, f, separators=(',',':'))
-          PY
+import json, os
+with open('def_raw.json','r') as f:
+    raw = f.read()
+d = json.loads(raw)
+d['States']['RenderECS']['Parameters']['TaskDefinition'] = os.environ['FAMILY']
+with open('def.json','w') as f:
+    json.dump(d, f, separators=(',', ':'))
+PY
 
-          # Update state machine definition
-          aws stepfunctions update-state-machine \
-            --state-machine-arn "${SM_ARN}" \
+          aws stepfunctions update-state-machine --state-machine-arn "$SM_ARN" \
             --definition file://def.json
