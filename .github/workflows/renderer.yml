@@ -12,11 +12,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
+
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
-      ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
-      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      AWS_REGION:      ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN:    ${{ vars.AWS_ROLE_ARN }}
+      ECR_REGISTRY:    ${{ vars.ECR_REGISTRY }}
+      ECR_REPOSITORY:  ${{ vars.ECR_REPOSITORY }}
 
     steps:
       - name: Checkout
@@ -38,7 +39,7 @@ jobs:
         working-directory: renderer
         run: |
           set -euo pipefail
-          GIT_SHA=$(git rev-parse --short HEAD)
+          GIT_SHA="$(git rev-parse --short HEAD)"
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${GIT_SHA}"
           docker build -t "${IMAGE_URI}" .
           docker push "${IMAGE_URI}"
@@ -48,44 +49,45 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TD_ARN=$(aws cloudformation describe-stack-resources --stack-name VideoCompute \
-            --query "StackResources[?ResourceType=='AWS::ECS::TaskDefinition'].PhysicalResourceId" --output text)
+
+          TD_ARN="$(aws cloudformation describe-stack-resources --stack-name VideoCompute \
+            --query "StackResources[?ResourceType=='AWS::ECS::TaskDefinition'].PhysicalResourceId" --output text)"
 
           aws ecs describe-task-definition --task-definition "$TD_ARN" --query taskDefinition > td.json
 
-          python3 - <<'PY'
+          # Patch the container image without heredocs (write a file, then run it)
+          cat > patch_td.py <<'PY'
           import json, os
           with open('td.json','r') as f:
               td = json.load(f)
-
           for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']:
               td.pop(k, None)
-
           for c in td.get('containerDefinitions', []):
               if c.get('name') == 'Renderer':
                   c['image'] = os.environ['IMAGE_URI']
-
           with open('td.new.json','w') as f:
               json.dump(td, f)
           PY
+          python3 patch_td.py
 
-                    TD_NEW=$(aws ecs register-task-definition --cli-input-json file://td.new.json \
-                            --query taskDefinition.taskDefinitionArn --output text)
-                    FAMILY=$(aws ecs describe-task-definition --task-definition "$TD_NEW" \
-                            --query 'taskDefinition.family' --output text)
-                    echo "FAMILY=${FAMILY}" >> "$GITHUB_ENV"
+          TD_NEW="$(aws ecs register-task-definition --cli-input-json file://td.new.json \
+            --query taskDefinition.taskDefinitionArn --output text)"
+          FAMILY="$(aws ecs describe-task-definition --task-definition "$TD_NEW" \
+            --query 'taskDefinition.family' --output text)"
+          echo "FAMILY=${FAMILY}" >> "$GITHUB_ENV"
 
-                - name: Ensure Step Functions uses the family (not a pinned rev)
-                  shell: bash
-                  run: |
-                    set -euo pipefail
-                    SM_ARN=$(aws cloudformation describe-stack-resources --stack-name VideoWorkflow \
-                      --query "StackResources[?ResourceType=='AWS::StepFunctions::StateMachine'].PhysicalResourceId" --output text)
+      - name: Ensure Step Functions uses the family (not a pinned rev)
+        shell: bash
+        run: |
+          set -euo pipefail
 
-                    aws stepfunctions describe-state-machine --state-machine-arn "$SM_ARN" \
-                      --query definition --output text > def_raw.json
+          SM_ARN="$(aws cloudformation describe-stack-resources --stack-name VideoWorkflow \
+            --query "StackResources[?ResourceType=='AWS::StepFunctions::StateMachine'].PhysicalResourceId" --output text)"
 
-                    python3 - <<'PY'
+          aws stepfunctions describe-state-machine --state-machine-arn "$SM_ARN" \
+            --query definition --output text > def_raw.json
+
+          cat > patch_def.py <<'PY'
           import json, os
           with open('def_raw.json','r') as f:
               raw = f.read()
@@ -94,6 +96,7 @@ jobs:
           with open('def.json','w') as f:
               json.dump(d, f, separators=(',', ':'))
           PY
+          python3 patch_def.py
 
-                    aws stepfunctions update-state-machine --state-machine-arn "$SM_ARN" \
-                      --definition file://def.json
+          aws stepfunctions update-state-machine --state-machine-arn "$SM_ARN" \
+            --definition file://def.json

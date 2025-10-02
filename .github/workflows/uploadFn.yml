@@ -10,11 +10,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       id-token: write
+      contents: read
+
     env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      AWS_REGION:      ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN:    ${{ vars.AWS_ROLE_ARN }}
       LAMBDA_FUNCTION_NAME: uploadFn
 
     steps:
@@ -27,19 +28,24 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
+          output-env-credentials: true
 
-      - name: Zip & update function
+      - name: Zip source (no vendor)
         shell: bash
         working-directory: lambdas/uploadFn
         run: |
           set -euo pipefail
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt -t .
-          zip -r9 /tmp/uploadFn.zip .
+          rm -f function.zip
+          # zip only the source you committed; Lambda already has dependencies from your last manual upload
+          zip -r function.zip . -x "__pycache__/*" "*.dist-info/*" "*.egg-info/*"
+
+      - name: Update code
+        shell: bash
+        working-directory: lambdas/uploadFn
+        run: |
+          set -euo pipefail
           aws lambda update-function-code \
             --function-name "${LAMBDA_FUNCTION_NAME}" \
-            --zip-file fileb:///tmp/uploadFn.zip >/dev/null
-          # Ensure handler matches our file
-          aws lambda update-function-configuration \
-            --function-name "${LAMBDA_FUNCTION_NAME}" \
-            --handler app.lambda_handler >/dev/null
+            --zip-file fileb://function.zip \
+            >/dev/null
+          aws lambda wait function-updated --function-name "${LAMBDA_FUNCTION_NAME}"
