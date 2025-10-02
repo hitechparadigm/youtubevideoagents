@@ -1,0 +1,100 @@
+name: Build & Deploy Renderer
+
+on:
+  push:
+    paths:
+      - "renderer/**"
+      - ".github/workflows/renderer.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}            # e.g. us-east-1
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}        # e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}    # e.g. videocompute-rendererrepo...
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push image
+        working-directory: renderer
+        shell: bash
+        run: |
+          set -euo pipefail
+          GIT_SHA="$(git rev-parse --short HEAD)"
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${GIT_SHA}"
+          docker build -t "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+
+      - name: Register new ECS Task Definition revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          TD_ARN="$(aws cloudformation describe-stack-resources \
+            --stack-name VideoCompute \
+            --query "StackResources[?ResourceType=='AWS::ECS::TaskDefinition'].PhysicalResourceId" \
+            --output text)"
+          aws ecs describe-task-definition --task-definition "$TD_ARN" --query taskDefinition > td.json
+
+          python3 - <<'PY'
+          import json, os
+          with open('td.json','r') as f:
+              td = json.load(f)
+          # strip read-only
+          for k in ['taskDefinitionArn','revision','status','requiresAttributes','compatibilities','registeredAt','registeredBy']:
+              td.pop(k, None)
+          # point Renderer container to pushed image
+          for c in td.get('containerDefinitions', []):
+              if c.get('name') == 'Renderer':
+                  c['image'] = os.environ['IMAGE_URI']
+          with open('td.new.json','w') as f:
+              json.dump(td, f, separators=(',',':'))
+          PY
+
+          TD_NEW="$(aws ecs register-task-definition --cli-input-json file://td.new.json \
+            --query taskDefinition.taskDefinitionArn --output text)"
+          FAMILY="$(aws ecs describe-task-definition --task-definition "${TD_NEW}" \
+            --query 'taskDefinition.family' --output text)"
+          echo "FAMILY=${FAMILY}" >> "$GITHUB_ENV"
+
+      - name: Ensure Step Functions uses the family (not a pinned rev)
+        shell: bash
+        run: |
+          set -euo pipefail
+          SM_ARN="$(aws cloudformation describe-stack-resources \
+            --stack-name VideoWorkflow \
+            --query "StackResources[?ResourceType=='AWS::StepFunctions::StateMachine'].PhysicalResourceId" \
+            --output text)"
+
+          aws stepfunctions describe-state-machine --state-machine-arn "$SM_ARN" \
+            --query definition --output text > def_raw.json
+
+          python3 - <<'PY'
+          import json, os, sys
+          with open('def_raw.json','r') as f:
+              raw = f.read()             # single-line JSON string
+          d = json.loads(raw)
+          d['States']['RenderECS']['Parameters']['TaskDefinition'] = os.environ['FAMILY']
+          with open('def.json','w') as f:
+              json.dump(d, f, separators=(',',':'))
+          PY
+
+          aws stepfunctions update-state-machine --state-machine-arn "$SM_ARN" \
+            --definition file://def.json
+
